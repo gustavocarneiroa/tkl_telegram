@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mensagens programadas</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdn.tiny.cloud/1/7pwvcweolg1rq82vb4bit2c48qabxzee6zxsjnk248wl888u/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+</head>
+<body>
+
+<div class="container mt-5">
+    <h2>Mensagens programadas</h2>
+    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#messageModal">
+      Adicionar Mensagem
+    </button>
+    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#quizModal">
+      Adicionar Quiz
+    </button>
+    <button type="button" class="btn btn-primary" onclick="toggleSent()">
+      Mostrar/ocultar enviados
+    </button>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Mensagem</th>
+                <th>Opções</th>
+                <th>Explicação</th>
+                <th>Enviar em</th>
+                <th>Status</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% messages.forEach(function(message) { %>
+                <tr
+                  data-sent="<%=message.sent%>"
+                  <% if (message.sent) { %>
+                    style = "display: none";
+                  <% } %>
+                >
+                    <td><%= message.id %></td>
+                    <td style="white-space: break-spaces;"><%- message.message %></td>
+                    <td><% message?.options?.forEach( option => { %>
+                        <span class="badge badge-pill badge-dark">
+                            <%=option.correct_option ? '✅': '❌' %>
+                            <%=option.option%>
+                        </span><br>
+                    <% }) %></td>
+                    <td><%= message.explanation %></td>
+                    <td>
+                      <span class="badge badge-pill badge-light"><%=message.send_at.date%></span><br>
+                      <span class="badge badge-pill badge-light"><%=message.send_at.time%></span><br>
+                    </td>
+                    <td>
+                        <% if (message.sent) { %>
+                            <span class="badge badge-success">Enviado</span>
+                        <% } else { %>
+                            <span class="badge badge-danger">Não enviado</span>
+                        <% } %>
+                    </td>
+                    <td>
+                        <% if (!message.sent) { %>
+                          <a href="#" class="btn btn-primary btn-sm">Editar</a>
+                          <a href="/send/<%= message.type %>/<%= message.id %>" class="btn btn-success btn-sm">Enviar</a>
+                          <a href="/delete/<%= message.id %>" class="btn btn-danger btn-sm">Excluir</a>
+                        <% } else { %>
+                          <a href="/send/<%= message.type %>/<%= message.id %>" class="btn btn-success btn-sm">Re-enviar</a>
+                        <% } %>
+                    </td>
+                </tr>
+            <% }); %>
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="quizModal" tabindex="-1" role="dialog" aria-labelledby="quizModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="quizModalLabel">Novo Quiz</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form method="POST" action="/quiz" id="quizForm">
+          <div class="form-group">
+            <label for="send-at">Data/Hora de envio:</label>
+            <div class="input-group date">
+              <input type="date" name="send_at_date" class="form-control" required />
+              <input type="time" name="send_at_time" class="form-control" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="quizQuestion">Pergunta</label>
+            <input type="text" class="form-control" id="quizQuestion" name="quizQuestion" required>
+          </div>
+          <div class="form-group">
+            <label for="quizOptions">Opções</label>
+            <div id="quizOptions">
+              <div class="form-row option-row">
+                <div class="form-group col-md-10">
+                  <input type="text" class="form-control" placeholder="Opção" name="options" required>
+                </div>
+                <div class="form-group col-md-2">
+                  <button type="button" class="btn btn-danger btn-sm remove-option-btn" disabled>x</button>
+                </div>
+              </div>
+            </div>
+            <button type="button" id="add-option-btn" class="btn btn-success">
+              <i class="fa fa-plus"></i> Adicionar opção
+            </button>
+          </div>
+          <div class="form-group">
+            <label for="quizCorrectOption">Opção correta (número)</label>
+            <input type="number" class="form-control" id="quizCorrectOption" name="quizCorrectOption" min="1" required>
+            <small id="correctOption" class="form-text text-muted">Selecione o número da posição da opção correta, exemplo: 1.</small>
+          </div>
+          <div class="form-group">
+            <label for="quizExplanation">Explicação</label>
+            <textarea class="form-control" id="quizExplanation" name="quizExplanation" maxlength="193" required></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+        <button type="submit" form="quizForm" class="btn btn-primary">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="messageModal" tabindex="-1" role="dialog" aria-labelledby="messageModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="messageModalLabel">Nova mensagem</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form method="POST" action="/message"  id="messageForm">
+          <div class="form-group">
+            <label for="send-at">Data/Hora de envio:</label>
+            <div class="input-group date">
+              <input type="date" name="send_at_date" class="form-control" required />
+              <input type="time" name="send_at_time" class="form-control" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Mensagem</label>
+            <textarea class="form-control message-area" name="message"></textarea>
+          </div>
+          <hr />
+          <div class="form-group">
+            <h4 for="">Criador de âncoras</h4>
+            <label for="url-input">URL:</label>
+            <input class="form-control" type="text" id="url-input">
+            <br>
+            <label for="text-input">Texto:</label>
+            <input class="form-control" type="text" id="text-input">
+            <br>
+            <button type="button" class="btn btn-sm btn-success" id="create-link-btn">Criar link</button>
+            <div id="link-container"></div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+        <button type="submit" form="messageForm" class="btn btn-primary">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script> 
+  // Array para guardar as opções adicionadas
+  const options = [];
+
+  // Seleciona o formulário de opções
+  const optionForm = document.getElementById("quizOptions");
+  // Seleciona o botão de adicionar opção
+  const addOptionBtn = document.getElementById("add-option-btn");
+
+  // Adiciona um listener no botão de adicionar opção
+  addOptionBtn.addEventListener("click", function(event) {
+    event.preventDefault();
+    if(options.length >= 9) {
+      return alert('Você atingiu o máximo de opções')
+    }
+    // Pega o número da última opção adicionada e incrementa
+    const lastOptionIndex = options.length > 0 ? options[options.length - 1].index : 1;
+    const newOptionIndex = lastOptionIndex + 1;
+
+    // Cria um novo elemento para a linha da opção
+    const newOptionRow = document.createElement("div");
+    newOptionRow.classList.add("form-row", "option-row");
+
+    // Cria um novo elemento para o input da opção
+    const newOptionInputCol = document.createElement("div");
+    newOptionInputCol.classList.add("form-group", "col-md-10");
+
+    // Cria um novo elemento para o botão de remover opção
+    const newRemoveOptionCol = document.createElement("div");
+    newRemoveOptionCol.classList.add("form-group", "col-md-2");
+
+    // Cria um novo input para a opção
+    const newOptionInput = document.createElement("input");
+    newOptionInput.type = "text";
+    newOptionInput.classList.add("form-control");
+    newOptionInput.placeholder = "Opção";
+    newOptionInput.required = true;
+    newOptionInput.name = `options`;
+    newOptionInputCol.appendChild(newOptionInput);
+
+    // Cria um novo botão para remover a opção
+    const newRemoveOptionBtn = document.createElement("button");
+    newRemoveOptionBtn.type = "button";
+    newRemoveOptionBtn.classList.add("btn", "btn-danger", "btn-sm");
+    newRemoveOptionBtn.innerHTML = 'x';
+    newRemoveOptionBtn.addEventListener("click", function() {
+      const indexToRemove = options.findIndex(option => option.index === newOptionIndex);
+      options.splice(indexToRemove, 1);
+      newOptionRow.remove();
+    });
+    newRemoveOptionCol.appendChild(newRemoveOptionBtn);
+
+    // Adiciona o índice da opção ao elemento correspondente
+    const newOptionIndexText = document.createTextNode(newOptionIndex);
+
+    // Adiciona a linha da opção ao formulário
+    newOptionRow.appendChild(newOptionInputCol);
+    newOptionRow.appendChild(newRemoveOptionCol);
+    optionForm.appendChild(newOptionRow);
+
+    // Adiciona a opção ao array de opções
+    options.push({ index: newOptionIndex, element: newOptionRow });
+  });
+
+
+  $('#quizCorrectOption').keyup(function () {
+    $('#correctOption').removeClass('text-muted')
+    console.log('Buscando index', (+this.value) -1)
+    const value = $('[name=options]')[(+this.value) -1]?.value
+    console.log(value);
+    if(value) {
+      return $('#correctOption').text(`Opção selecionada: ${value}`).addClass('text-success').removeClass('text-danger')
+    } 
+
+    return $('#correctOption').text('Opção inválida').addClass('text-danger').removeClass('text-success')
+  })
+</script>
+<script>
+  tinymce.init({
+    selector: '.message-area',
+    plugins: 'emoticons',
+    toolbar: 'blocks bold italic strikethrough emoticons'
+  });
+</script>
+<script>
+  const createLinkBtn = document.getElementById("create-link-btn");
+const urlInput = document.getElementById("url-input");
+const textInput = document.getElementById("text-input");
+const linkContainer = document.getElementById("link-container");
+
+createLinkBtn.addEventListener("click", function() {
+  const url = urlInput.value;
+  const text = textInput.value;
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.textContent = text;
+  link.target = "_blank";
+
+  linkContainer.appendChild(link);
+});
+
+</script>
+
+<script>
+  function toggleSent() {
+    $('[data-sent="1"]').toggle()
+  }
+</script>
+</body>
+</html>
